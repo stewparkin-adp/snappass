@@ -6,8 +6,6 @@ using './main.bicep'
 
 param baseName = 'snappass'
 
-param location = 'australiaeast'
-
 // Loaded from the shell environment at deploy time (set by deploy.sh).
 // Never hard-code secrets here.
 param flaskSecretKey = readEnvironmentVariable('SNAPPASS_SECRET_KEY')

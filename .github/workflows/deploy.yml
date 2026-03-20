@@ -76,7 +76,7 @@ jobs:
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --template-file infra/main.bicep \
             --parameters infra/main.bicepparam \
-            --parameters baseName="$SNAPPASS_BASE_NAME" \
+            --parameters baseName="$SNAPPASS_BASE_NAME" location="$AZURE_LOCATION" \
             --output json)
 
           ACR_NAME=$(echo "$OUTPUT"         | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrName']['value'])")
