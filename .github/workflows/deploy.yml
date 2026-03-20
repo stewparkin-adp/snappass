@@ -1,0 +1,120 @@
+name: Deploy SnapPass
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+      - 'deploy.sh'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      location:
+        description: 'Azure region (overrides variable)'
+        required: false
+        type: string
+      base_name:
+        description: 'Base name for resources (overrides variable)'
+        required: false
+        type: string
+
+# Required for OIDC token exchange with Azure
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  AZURE_LOCATION:       ${{ inputs.location   || vars.AZURE_LOCATION   || 'australiaeast' }}
+  SNAPPASS_BASE_NAME:   ${{ inputs.base_name  || vars.SNAPPASS_BASE_NAME || 'snappass' }}
+  SNAPPASS_SECRET_KEY:  ${{ secrets.SNAPPASS_SECRET_KEY }}
+
+jobs:
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # Azure login via OIDC (no long-lived credentials stored anywhere)
+      # Requires a federated credential on the service principal configured
+      # for this repo — see README for setup instructions.
+      # ------------------------------------------------------------------
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Bicep
+        run: az bicep install
+
+      # ------------------------------------------------------------------
+      # Create the resource group if it doesn't already exist
+      # ------------------------------------------------------------------
+      - name: Create resource group
+        run: |
+          az group create \
+            --name "$AZURE_RESOURCE_GROUP" \
+            --location "$AZURE_LOCATION" \
+            --output none
+          echo "Resource group: $AZURE_RESOURCE_GROUP"
+
+      # ------------------------------------------------------------------
+      # Deploy Bicep — ACR, Redis, Managed Identity, Container App
+      # ------------------------------------------------------------------
+      - name: Deploy Bicep
+        id: bicep
+        run: |
+          OUTPUT=$(az deployment group create \
+            --name "snappass-$(date +%Y%m%d%H%M%S)" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --parameters baseName="$SNAPPASS_BASE_NAME" \
+            --output json)
+
+          ACR_NAME=$(echo "$OUTPUT"         | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrName']['value'])")
+          ACR_LOGIN_SERVER=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrLoginServer']['value'])")
+          APP_URL=$(echo "$OUTPUT"          | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['snappassUrl']['value'])")
+
+          echo "acr_name=$ACR_NAME"               >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "app_url=$APP_URL"                 >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # Import the public SnapPass image into ACR so the Container App
+      # uses a registry we control rather than Docker Hub directly
+      # ------------------------------------------------------------------
+      - name: Import image into ACR
+        run: |
+          az acr import \
+            --name "${{ steps.bicep.outputs.acr_name }}" \
+            --source "docker.io/pinterest/snappass:latest" \
+            --image "snappass:latest" \
+            --force \
+            --resource-group "$AZURE_RESOURCE_GROUP"
+
+      # ------------------------------------------------------------------
+      # Update the Container App to use the ACR-hosted image
+      # ------------------------------------------------------------------
+      - name: Update Container App image
+        run: |
+          az containerapp update \
+            --name "${SNAPPASS_BASE_NAME}-app" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" \
+            --output none
+
+      - name: Print URL
+        run: |
+          echo "### SnapPass deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** ${{ steps.bicep.outputs.app_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" >> "$GITHUB_STEP_SUMMARY"
