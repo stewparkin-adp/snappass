@@ -88,17 +88,16 @@ jobs:
           echo "app_url=$APP_URL"                 >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # Import the public SnapPass image into ACR so the Container App
-      # uses a registry we control rather than Docker Hub directly
+      # Build the SnapPass image directly in ACR from our Dockerfile
+      # (avoids Docker Hub auth requirements entirely)
       # ------------------------------------------------------------------
-      - name: Import image into ACR
+      - name: Build image in ACR
         run: |
-          az acr import \
-            --name "${{ steps.bicep.outputs.acr_name }}" \
-            --source "docker.io/pinterest/snappass:latest" \
+          az acr build \
+            --registry "${{ steps.bicep.outputs.acr_name }}" \
             --image "snappass:latest" \
-            --force \
-            --resource-group "$AZURE_RESOURCE_GROUP"
+            --file Dockerfile \
+            .
 
       # ------------------------------------------------------------------
       # Update the Container App to use the ACR-hosted image

@@ -51,14 +51,13 @@ jobs:
           echo "login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
           echo "acr_name=$ACR_NAME"             >> "$GITHUB_OUTPUT"
 
-      - name: Import updated image into ACR
+      - name: Rebuild image in ACR
         run: |
-          az acr import \
-            --name "${{ steps.acr.outputs.acr_name }}" \
-            --source "docker.io/pinterest/snappass:$IMAGE_TAG" \
+          az acr build \
+            --registry "${{ steps.acr.outputs.acr_name }}" \
             --image "snappass:$IMAGE_TAG" \
-            --force \
-            --resource-group "$AZURE_RESOURCE_GROUP"
+            --file Dockerfile \
+            .
 
       - name: Update Container App
         run: |
