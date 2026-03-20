@@ -22,8 +22,8 @@ param location string = resourceGroup().location
 @secure()
 param flaskSecretKey string
 
-@description('Container image to deploy.')
-param containerImage string = 'pinterest/snappass:latest'
+@description('Container image to deploy. Defaults to an MCR placeholder; deploy.sh and the workflow update this to the ACR image after import.')
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
 @description('Azure Cache for Redis SKU.')
 @allowed(['Basic', 'Standard'])
@@ -93,9 +93,7 @@ module app 'modules/containerapp.bicep' = {
     containerAppName: containerAppName
     containerImage: containerImage
     acrLoginServer: acr.outputs.loginServer
-    acrName: acrName
     identityId: identity.outputs.identityId
-    identityClientId: identity.outputs.clientId
     redisHostName: redis.outputs.hostName
     redisAccessKey: redis.outputs.primaryKey
     flaskSecretKey: flaskSecretKey

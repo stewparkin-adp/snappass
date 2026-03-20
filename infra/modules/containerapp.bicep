@@ -29,14 +29,8 @@ param containerImage string
 @description('ACR login server (e.g. myacr.azurecr.io).')
 param acrLoginServer string
 
-@description('ACR resource name.')
-param acrName string
-
 @description('Resource ID of the user-assigned managed identity.')
 param identityId string
-
-@description('Client ID of the user-assigned managed identity.')
-param identityClientId string
 
 @description('Redis cache hostname.')
 param redisHostName string
@@ -113,6 +107,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       secrets: [
         {
           name: 'redis-url'
+          #disable-next-line use-secure-value-for-secure-inputs
           value: redisUrl
         }
         {
