@@ -100,21 +100,26 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Install Bicep
-        run: az bicep install
-
-      - name: Deploy with custom domain
+      # Step 1: Register the hostname on the Container App (no cert yet)
+      # This is required before Azure will provision a managed certificate
+      - name: Add hostname to Container App
         run: |
-          az deployment group create \
-            --name "snappass-domain-$(date +%Y%m%d%H%M%S)" \
+          az containerapp hostname add \
+            --hostname "${{ inputs.custom_domain }}" \
+            --name "${SNAPPASS_BASE_NAME}-app" \
+            --resource-group "$AZURE_RESOURCE_GROUP"
+
+      # Step 2: Provision free managed TLS cert and bind it in one command.
+      # Azure validates ownership via the CNAME record, then issues the cert.
+      # This can take a few minutes.
+      - name: Bind managed certificate
+        run: |
+          az containerapp hostname bind \
+            --hostname "${{ inputs.custom_domain }}" \
+            --name "${SNAPPASS_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
-            --parameters infra/main.bicepparam \
-            --parameters \
-              baseName="$SNAPPASS_BASE_NAME" \
-              location="$AZURE_LOCATION" \
-              customDomain="${{ inputs.custom_domain }}" \
-            --output none
+            --environment "${SNAPPASS_BASE_NAME}-env" \
+            --validation-method CNAME
 
       - name: Summary
         run: |

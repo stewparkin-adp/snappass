@@ -118,6 +118,3 @@ output acrLoginServer string = acr.outputs.loginServer
 
 @description('Azure Container Registry name (used by deploy.sh for image import).')
 output acrName string = acrName
-
-@description('Container Apps Environment custom domain verification ID (needed for DNS TXT record).')
-output customDomainVerificationId string = app.outputs.customDomainVerificationId
