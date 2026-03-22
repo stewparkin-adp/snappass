@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="adp-hero adp-hero-sm">
+  <div class="container">
+    <h1 class="adp-hero-title">You Have Received a Secret</h1>
+    <p class="adp-hero-sub">This link contains a one-time secret. It will be permanently deleted once you reveal it.</p>
+  </div>
+</div>
+
+<div class="container adp-main">
+  <div class="row">
+    <div class="col-sm-6 col-sm-offset-3">
+      <div class="adp-card adp-card-centered">
+        <div class="adp-card-header">
+          <i class="fa fa-envelope-open"></i> Reveal Secret
+        </div>
+        <div class="adp-card-body text-center">
+          <div class="adp-warning-box">
+            <i class="fa fa-exclamation-triangle adp-warning-icon"></i>
+            <p>Once revealed, this secret cannot be viewed again. Make sure you are ready to save it.</p>
+          </div>
+          <button id="revealSecret" type="button" class="btn adp-btn-primary adp-btn-lg">
+            <i class="fa fa-unlock"></i> Reveal Secret
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ config.STATIC_URL }}/snappass/scripts/preview.js"></script>
+{% endblock %}

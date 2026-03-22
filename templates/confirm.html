@@ -3,29 +3,48 @@
 {% block content %}
 <div class="adp-hero adp-hero-sm">
   <div class="container">
-    <h1 class="adp-hero-title">You Have Received a Secret</h1>
-    <p class="adp-hero-sub">This link contains a one-time secret. It will be permanently deleted once you reveal it.</p>
+    <h1 class="adp-hero-title">Secret Link Created</h1>
+    <p class="adp-hero-sub">Your secret has been stored. Share the link below — it can only be viewed once.</p>
   </div>
 </div>
 
 <div class="container adp-main">
   <div class="row">
-    <div class="col-sm-6 col-sm-offset-3">
-      <div class="adp-card adp-card-centered">
+    <div class="col-sm-8 col-sm-offset-2">
+      <div class="adp-card">
         <div class="adp-card-header">
-          <i class="fa fa-envelope-open"></i> Reveal Secret
+          <i class="fa fa-link"></i> Your Secure Link
         </div>
-        <div class="adp-card-body text-center">
-          <div class="adp-warning-box">
-            <i class="fa fa-exclamation-triangle adp-warning-icon"></i>
-            <p>Once revealed, this secret cannot be viewed again. Make sure you are ready to save it.</p>
+        <div class="adp-card-body">
+          <div class="adp-secret-wrap">
+            <textarea
+              class="form-control adp-textarea adp-textarea-readonly"
+              rows="3"
+              id="password-link"
+              readonly="readonly">{{ password_link }}</textarea>
+            <button
+              title="Copy to clipboard"
+              type="button"
+              class="btn adp-btn-copy copy-clipboard-btn"
+              id="copy-clipboard-btn"
+              data-clipboard-target="#password-link"
+              data-placement="bottom">
+              <i class="fa fa-clipboard"></i> Copy
+            </button>
           </div>
-          <a href="{{ password_link }}" class="btn adp-btn-primary adp-btn-lg">
-            <i class="fa fa-unlock"></i> Reveal Secret
-          </a>
         </div>
+      </div>
+
+      <div class="adp-alert-deleted">
+        <i class="fa fa-exclamation-triangle"></i>
+        This link will stop working once the recipient views the secret. Do not open it yourself.
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ config.STATIC_URL }}/clipboardjs/clipboard.min.js"></script>
+<script src="{{ config.STATIC_URL }}/snappass/scripts/clipboard_button.js"></script>
 {% endblock %}
