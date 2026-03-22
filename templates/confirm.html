@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="adp-hero adp-hero-sm">
+  <div class="container">
+    <h1 class="adp-hero-title">{{ _('You Have Received a Secret') }}</h1>
+    <p class="adp-hero-sub">{{ _('This link contains a one-time secret. It will be permanently deleted once you reveal it.') }}</p>
+  </div>
+</div>
+
+<div class="container adp-main">
+  <div class="row">
+    <div class="col-sm-6 col-sm-offset-3">
+      <div class="adp-card adp-card-centered">
+        <div class="adp-card-header">
+          <i class="fa fa-envelope-open"></i> {{ _('Reveal Secret') }}
+        </div>
+        <div class="adp-card-body text-center">
+          <div class="adp-warning-box">
+            <i class="fa fa-exclamation-triangle adp-warning-icon"></i>
+            <p>{{ _('Once revealed, this secret cannot be viewed again. Make sure you are ready to save it.') }}</p>
+          </div>
+          <a href="{{ password_link }}" class="btn adp-btn-primary adp-btn-lg">
+            <i class="fa fa-unlock"></i> {{ _('Reveal Secret') }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
