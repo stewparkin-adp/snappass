@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'infra/**'
+      - 'templates/**'
+      - 'static/**'
+      - 'Dockerfile'
       - 'deploy.sh'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
