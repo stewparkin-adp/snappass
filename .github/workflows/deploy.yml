@@ -113,10 +113,39 @@ jobs:
             --image "${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" \
             --output none
 
+      # ------------------------------------------------------------------
+      # Re-bind custom domain after every deploy.
+      # Bicep resets ingress config and drops the custom domain binding,
+      # so we restore it here if CUSTOM_DOMAIN variable is set.
+      # ------------------------------------------------------------------
+      - name: Restore custom domain binding
+        if: ${{ vars.CUSTOM_DOMAIN != '' }}
+        env:
+          CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
+        run: |
+          echo "Restoring custom domain: $CUSTOM_DOMAIN"
+
+          # Add hostname (idempotent — safe to run even if already bound)
+          az containerapp hostname add \
+            --hostname "$CUSTOM_DOMAIN" \
+            --name "${SNAPPASS_BASE_NAME}-app" \
+            --resource-group "$AZURE_RESOURCE_GROUP" 2>/dev/null || true
+
+          # Bind managed cert (idempotent)
+          az containerapp hostname bind \
+            --hostname "$CUSTOM_DOMAIN" \
+            --name "${SNAPPASS_BASE_NAME}-app" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --environment "${SNAPPASS_BASE_NAME}-env" \
+            --validation-method CNAME
+
       - name: Print URL
         run: |
+          DOMAIN="${{ vars.CUSTOM_DOMAIN }}"
+          URL="${DOMAIN:+https://$DOMAIN}"
+          URL="${URL:-${{ steps.bicep.outputs.app_url }}}"
           echo "### SnapPass deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** ${{ steps.bicep.outputs.app_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" >> "$GITHUB_STEP_SUMMARY"
