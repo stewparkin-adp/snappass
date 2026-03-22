@@ -49,8 +49,15 @@ param minReplicas int = 1
 @description('Maximum number of replicas.')
 param maxReplicas int = 3
 
+@description('Custom domain to bind (e.g. secrets.assured-dp.com). Leave empty to skip.')
+param customDomain string = ''
+
 // Construct the rediss:// URL (double-s = SSL) for Azure Redis SSL port 6380
 var redisUrl = 'rediss://:${redisAccessKey}@${redisHostName}:6380'
+
+var hasCustomDomain = !empty(customDomain)
+// Sanitised name for the managed cert resource (dots not allowed in resource names)
+var certName = hasCustomDomain ? replace(customDomain, '.', '-') : 'none'
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
@@ -80,6 +87,18 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// Managed certificate — Azure provisions a free TLS cert once DNS is verified.
+// Requires the CNAME and TXT records to exist in DNS before this resource deploys.
+resource managedCert 'Microsoft.App/managedEnvironments/managedCertificates@2024-03-01' = if (hasCustomDomain) {
+  parent: environment
+  name: certName
+  location: location
+  properties: {
+    subjectName: customDomain
+    domainControlValidation: 'CNAME'
+  }
+}
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: containerAppName
   location: location
@@ -97,6 +116,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 5000
         allowInsecure: false
         transport: 'auto'
+        customDomains: hasCustomDomain ? [
+          {
+            name: customDomain
+            bindingType: 'SniEnabled'
+            certificateId: managedCert.id
+          }
+        ] : []
       }
       registries: [
         {
@@ -190,3 +216,6 @@ output fqdn string = containerApp.properties.configuration.ingress.fqdn
 
 @description('Log Analytics workspace resource ID.')
 output logAnalyticsId string = logAnalytics.id
+
+@description('Custom domain verification ID — used for the asuid DNS TXT record.')
+output customDomainVerificationId string = environment.properties.customDomainVerificationId

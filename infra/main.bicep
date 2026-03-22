@@ -42,6 +42,9 @@ param minReplicas int = 1
 @maxValue(10)
 param maxReplicas int = 3
 
+@description('Custom domain to bind (e.g. secrets.assured-dp.com). Leave empty to skip.')
+param customDomain string = ''
+
 // ---------------------------------------------------------------------------
 // Derived names
 // ---------------------------------------------------------------------------
@@ -99,6 +102,7 @@ module app 'modules/containerapp.bicep' = {
     flaskSecretKey: flaskSecretKey
     minReplicas: minReplicas
     maxReplicas: maxReplicas
+    customDomain: customDomain
   }
 }
 
@@ -114,3 +118,6 @@ output acrLoginServer string = acr.outputs.loginServer
 
 @description('Azure Container Registry name (used by deploy.sh for image import).')
 output acrName string = acrName
+
+@description('Container Apps Environment custom domain verification ID (needed for DNS TXT record).')
+output customDomainVerificationId string = app.outputs.customDomainVerificationId
