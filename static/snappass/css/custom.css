@@ -205,6 +205,10 @@ body {
   width: 100%;
 }
 
+.adp-select {
+  padding-right: 36px;
+}
+
 .adp-textarea:focus,
 .adp-select:focus {
   border-color: #0090d4;
