@@ -1,6 +1,6 @@
 /*
-  SnapPass — Azure Container Apps Deployment
-  Orchestrates: Managed Identity, ACR, Redis, Log Analytics,
+  PWPush — Azure Container Apps Deployment
+  Orchestrates: Managed Identity, ACR, Log Analytics,
                 Container Apps Environment, Container App
 */
 
@@ -18,21 +18,19 @@ param baseName string
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
 
-@description('Flask SECRET_KEY value. Must be a strong random string.')
+@description('Rails SECRET_KEY_BASE value. Must be a strong random string (128+ hex chars).')
 @secure()
-param flaskSecretKey string
+param secretKeyBase string
 
-@description('Container image to deploy. Defaults to an MCR placeholder; deploy.sh and the workflow update this to the ACR image after import.')
+@description('PWPush master encryption key for stored secrets (64 hex chars).')
+@secure()
+param pwpushMasterKey string
+
+@description('Container image to deploy. Defaults to an MCR placeholder; the workflow updates this to the ACR image after import.')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
-@description('Azure Cache for Redis SKU.')
-@allowed(['Basic', 'Standard'])
-param redisSku string = 'Standard'
-
-@description('Azure Cache for Redis capacity (C-family: 0-6).')
-@minValue(0)
-@maxValue(6)
-param redisCapacity int = 1
+@description('Custom domain (e.g. secrets.assured-dp.com). Used to set PWP__HOST_DOMAIN.')
+param customDomain string = ''
 
 @description('Minimum Container App replicas (0 = scale-to-zero).')
 param minReplicas int = 1
@@ -42,15 +40,11 @@ param minReplicas int = 1
 @maxValue(10)
 param maxReplicas int = 3
 
-@description('Custom domain to bind (e.g. secrets.assured-dp.com). Leave empty to skip.')
-param customDomain string = ''
-
 // ---------------------------------------------------------------------------
 // Derived names
 // ---------------------------------------------------------------------------
 
 var acrName          = '${baseName}acr${uniqueString(resourceGroup().id)}'
-var redisName        = '${baseName}-redis-${uniqueString(resourceGroup().id)}'
 var identityName     = '${baseName}-id'
 var logAnalyticsName = '${baseName}-logs'
 var environmentName  = '${baseName}-env'
@@ -77,16 +71,6 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-module redis 'modules/redis.bicep' = {
-  name: 'deploy-redis'
-  params: {
-    redisName: redisName
-    location: location
-    skuName: redisSku
-    skuCapacity: redisCapacity
-  }
-}
-
 module app 'modules/containerapp.bicep' = {
   name: 'deploy-containerapp'
   params: {
@@ -97,12 +81,11 @@ module app 'modules/containerapp.bicep' = {
     containerImage: containerImage
     acrLoginServer: acr.outputs.loginServer
     identityId: identity.outputs.identityId
-    redisHostName: redis.outputs.hostName
-    redisAccessKey: redis.outputs.primaryKey
-    flaskSecretKey: flaskSecretKey
+    secretKeyBase: secretKeyBase
+    pwpushMasterKey: pwpushMasterKey
+    customDomain: customDomain
     minReplicas: minReplicas
     maxReplicas: maxReplicas
-    customDomain: customDomain
   }
 }
 
@@ -110,11 +93,11 @@ module app 'modules/containerapp.bicep' = {
 // Outputs
 // ---------------------------------------------------------------------------
 
-@description('URL of the deployed SnapPass application.')
-output snappassUrl string = 'https://${app.outputs.fqdn}'
+@description('URL of the deployed PWPush application.')
+output pwpushUrl string = 'https://${app.outputs.fqdn}'
 
 @description('Azure Container Registry login server.')
 output acrLoginServer string = acr.outputs.loginServer
 
-@description('Azure Container Registry name (used by deploy.sh for image import).')
+@description('Azure Container Registry name (used by the workflow for image import).')
 output acrName string = acrName

@@ -1,4 +1,4 @@
-name: Refresh SnapPass Image
+name: Refresh PWPush Image
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'SnapPass image tag to pull (default: latest)'
+        description: 'PWPush image tag to pull (default: latest)'
         required: false
         default: 'latest'
         type: string
@@ -18,7 +18,7 @@ permissions:
 
 env:
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-  SNAPPASS_BASE_NAME:   ${{ vars.SNAPPASS_BASE_NAME || 'snappass' }}
+  PWPUSH_BASE_NAME:     ${{ vars.PWPUSH_BASE_NAME || 'pwpush' }}
   IMAGE_TAG:            ${{ inputs.image_tag || 'latest' }}
 
 jobs:
@@ -39,36 +39,36 @@ jobs:
         id: acr
         run: |
           IMAGE=$(az containerapp show \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --query "properties.template.containers[0].image" \
             --output tsv)
 
-          # Extract the registry hostname (everything before the first /)
           ACR_LOGIN_SERVER="${IMAGE%%/*}"
           ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
 
           echo "login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
           echo "acr_name=$ACR_NAME"             >> "$GITHUB_OUTPUT"
 
-      - name: Rebuild image in ACR
+      # Import latest PWPush image from Docker Hub into ACR
+      - name: Import PWPush image into ACR
         run: |
-          az acr build \
-            --registry "${{ steps.acr.outputs.acr_name }}" \
-            --image "snappass:$IMAGE_TAG" \
-            --file Dockerfile \
-            .
+          az acr import \
+            --name "${{ steps.acr.outputs.acr_name }}" \
+            --source "docker.io/psilocybin/pwpush:$IMAGE_TAG" \
+            --image "pwpush:$IMAGE_TAG" \
+            --force
 
       - name: Update Container App
         run: |
           az containerapp update \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --image "${{ steps.acr.outputs.login_server }}/snappass:$IMAGE_TAG" \
+            --image "${{ steps.acr.outputs.login_server }}/pwpush:$IMAGE_TAG" \
             --output none
 
       - name: Summary
         run: |
           echo "### Image refreshed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.acr.outputs.login_server }}/snappass:${IMAGE_TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.acr.outputs.login_server }}/pwpush:${IMAGE_TAG}" >> "$GITHUB_STEP_SUMMARY"

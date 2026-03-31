@@ -4,18 +4,18 @@ using './main.bicep'
 // Required — edit before deploying
 // ---------------------------------------------------------------------------
 
-param baseName = 'snappass'
+param baseName = 'pwpush'
 
-// Loaded from the shell environment at deploy time (set by deploy.sh).
+// Loaded from the shell environment at deploy time.
 // Never hard-code secrets here.
-param flaskSecretKey = readEnvironmentVariable('SNAPPASS_SECRET_KEY')
+param secretKeyBase   = readEnvironmentVariable('PWP_SECRET_KEY_BASE')
+param pwpushMasterKey = readEnvironmentVariable('PWP_MASTER_KEY')
 
 // ---------------------------------------------------------------------------
 // Optional overrides (uncomment to change defaults)
 // ---------------------------------------------------------------------------
 
-// param containerImage = 'pinterest/snappass:latest'
-// param redisSku       = 'Standard'
-// param redisCapacity  = 1
+// param containerImage = 'psilocybin/pwpush:latest'
+// param customDomain   = 'secrets.assured-dp.com'
 // param minReplicas    = 1
 // param maxReplicas    = 3

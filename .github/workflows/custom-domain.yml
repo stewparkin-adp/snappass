@@ -20,8 +20,7 @@ permissions:
 env:
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   AZURE_LOCATION:       ${{ vars.AZURE_LOCATION || 'uksouth' }}
-  SNAPPASS_BASE_NAME:   ${{ vars.SNAPPASS_BASE_NAME || 'snappass' }}
-  SNAPPASS_SECRET_KEY:  ${{ secrets.SNAPPASS_SECRET_KEY }}
+  PWPUSH_BASE_NAME:     ${{ vars.PWPUSH_BASE_NAME || 'pwpush' }}
 
 jobs:
   # ------------------------------------------------------------------
@@ -47,12 +46,12 @@ jobs:
         id: env-info
         run: |
           VERIFICATION_ID=$(az containerapp env show \
-            --name "${SNAPPASS_BASE_NAME}-env" \
+            --name "${PWPUSH_BASE_NAME}-env" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.customDomainVerificationId -o tsv)
 
           APP_FQDN=$(az containerapp show \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --query properties.configuration.ingress.fqdn -o tsv)
 
@@ -106,7 +105,7 @@ jobs:
         run: |
           az containerapp hostname add \
             --hostname "${{ inputs.custom_domain }}" \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP"
 
       # Step 2: Provision free managed TLS cert and bind it in one command.
@@ -116,9 +115,9 @@ jobs:
         run: |
           az containerapp hostname bind \
             --hostname "${{ inputs.custom_domain }}" \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --environment "${SNAPPASS_BASE_NAME}-env" \
+            --environment "${PWPUSH_BASE_NAME}-env" \
             --validation-method CNAME
 
       - name: Summary

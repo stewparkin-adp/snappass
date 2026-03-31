@@ -1,4 +1,4 @@
-name: Deploy SnapPass
+name: Deploy PWPush
 
 on:
   push:
@@ -6,9 +6,6 @@ on:
       - main
     paths:
       - 'infra/**'
-      - 'templates/**'
-      - 'static/**'
-      - 'Dockerfile'
       - 'deploy.sh'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
@@ -29,9 +26,8 @@ permissions:
 
 env:
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-  AZURE_LOCATION:       ${{ inputs.location   || vars.AZURE_LOCATION   || 'australiaeast' }}
-  SNAPPASS_BASE_NAME:   ${{ inputs.base_name  || vars.SNAPPASS_BASE_NAME || 'snappass' }}
-  SNAPPASS_SECRET_KEY:  ${{ secrets.SNAPPASS_SECRET_KEY }}
+  AZURE_LOCATION:       ${{ inputs.location  || vars.AZURE_LOCATION  || 'uksouth' }}
+  PWPUSH_BASE_NAME:     ${{ inputs.base_name || vars.PWPUSH_BASE_NAME || 'pwpush' }}
 
 jobs:
   deploy:
@@ -44,8 +40,6 @@ jobs:
 
       # ------------------------------------------------------------------
       # Azure login via OIDC (no long-lived credentials stored anywhere)
-      # Requires a federated credential on the service principal configured
-      # for this repo — see README for setup instructions.
       # ------------------------------------------------------------------
       - name: Azure login
         uses: azure/login@v2
@@ -69,38 +63,41 @@ jobs:
           echo "Resource group: $AZURE_RESOURCE_GROUP"
 
       # ------------------------------------------------------------------
-      # Deploy Bicep — ACR, Redis, Managed Identity, Container App
+      # Deploy Bicep — ACR, Managed Identity, Container App
       # ------------------------------------------------------------------
       - name: Deploy Bicep
         id: bicep
+        env:
+          PWP_SECRET_KEY_BASE: ${{ secrets.PWP_SECRET_KEY_BASE }}
+          PWP_MASTER_KEY:      ${{ secrets.PWP_MASTER_KEY }}
         run: |
           OUTPUT=$(az deployment group create \
-            --name "snappass-$(date +%Y%m%d%H%M%S)" \
+            --name "pwpush-$(date +%Y%m%d%H%M%S)" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --template-file infra/main.bicep \
             --parameters infra/main.bicepparam \
-            --parameters baseName="$SNAPPASS_BASE_NAME" location="$AZURE_LOCATION" \
+            --parameters baseName="$PWPUSH_BASE_NAME" location="$AZURE_LOCATION" \
             --output json)
 
           ACR_NAME=$(echo "$OUTPUT"         | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrName']['value'])")
           ACR_LOGIN_SERVER=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['acrLoginServer']['value'])")
-          APP_URL=$(echo "$OUTPUT"          | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['snappassUrl']['value'])")
+          APP_URL=$(echo "$OUTPUT"          | python3 -c "import sys,json; print(json.load(sys.stdin)['properties']['outputs']['pwpushUrl']['value'])")
 
-          echo "acr_name=$ACR_NAME"               >> "$GITHUB_OUTPUT"
+          echo "acr_name=$ACR_NAME"                 >> "$GITHUB_OUTPUT"
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
-          echo "app_url=$APP_URL"                 >> "$GITHUB_OUTPUT"
+          echo "app_url=$APP_URL"                   >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # Build the SnapPass image directly in ACR from our Dockerfile
-      # (avoids Docker Hub auth requirements entirely)
+      # Import the official PWPush image from Docker Hub into ACR
+      # (keeps the image in your private registry; no Dockerfile needed)
       # ------------------------------------------------------------------
-      - name: Build image in ACR
+      - name: Import PWPush image into ACR
         run: |
-          az acr build \
-            --registry "${{ steps.bicep.outputs.acr_name }}" \
-            --image "snappass:latest" \
-            --file Dockerfile \
-            .
+          az acr import \
+            --name "${{ steps.bicep.outputs.acr_name }}" \
+            --source "docker.io/psilocybin/pwpush:latest" \
+            --image "pwpush:latest" \
+            --force
 
       # ------------------------------------------------------------------
       # Update the Container App to use the ACR-hosted image
@@ -108,9 +105,9 @@ jobs:
       - name: Update Container App image
         run: |
           az containerapp update \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --image "${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" \
+            --image "${{ steps.bicep.outputs.acr_login_server }}/pwpush:latest" \
             --output none
 
       # ------------------------------------------------------------------
@@ -125,18 +122,16 @@ jobs:
         run: |
           echo "Restoring custom domain: $CUSTOM_DOMAIN"
 
-          # Add hostname (idempotent — safe to run even if already bound)
           az containerapp hostname add \
             --hostname "$CUSTOM_DOMAIN" \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" 2>/dev/null || true
 
-          # Bind managed cert (idempotent)
           az containerapp hostname bind \
             --hostname "$CUSTOM_DOMAIN" \
-            --name "${SNAPPASS_BASE_NAME}-app" \
+            --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --environment "${SNAPPASS_BASE_NAME}-env" \
+            --environment "${PWPUSH_BASE_NAME}-env" \
             --validation-method CNAME
 
       - name: Print URL
@@ -144,8 +139,8 @@ jobs:
           DOMAIN="${{ vars.CUSTOM_DOMAIN }}"
           URL="${DOMAIN:+https://$DOMAIN}"
           URL="${URL:-${{ steps.bicep.outputs.app_url }}}"
-          echo "### SnapPass deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "### PWPush deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/snappass:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/pwpush:latest" >> "$GITHUB_STEP_SUMMARY"

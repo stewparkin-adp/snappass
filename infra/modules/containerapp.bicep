@@ -3,9 +3,9 @@
   Creates:
     - Log Analytics Workspace
     - Container Apps Managed Environment
-    - Container App running SnapPass
+    - Container App running PWPush
 
-  Secrets (REDIS_URL, SECRET_KEY) are stored in Container Apps secrets
+  Secrets (SECRET_KEY_BASE, PWPUSH_MASTER_KEY) are stored in Container Apps secrets
   and injected into the container via secretRef — never as plain-text env vars.
 */
 
@@ -23,7 +23,7 @@ param environmentName string
 @description('Container App resource name.')
 param containerAppName string
 
-@description('Full image reference, e.g. pinterest/snappass:latest or myacr.azurecr.io/snappass:latest.')
+@description('Full image reference, e.g. psilocybin/pwpush:latest or myacr.azurecr.io/pwpush:latest.')
 param containerImage string
 
 @description('ACR login server (e.g. myacr.azurecr.io).')
@@ -32,16 +32,16 @@ param acrLoginServer string
 @description('Resource ID of the user-assigned managed identity.')
 param identityId string
 
-@description('Redis cache hostname.')
-param redisHostName string
-
-@description('Redis primary access key.')
+@description('Rails SECRET_KEY_BASE value.')
 @secure()
-param redisAccessKey string
+param secretKeyBase string
 
-@description('Flask SECRET_KEY value.')
+@description('PWPush master encryption key for stored secrets.')
 @secure()
-param flaskSecretKey string
+param pwpushMasterKey string
+
+@description('Custom domain (e.g. secrets.assured-dp.com). Sets PWP__HOST_DOMAIN.')
+param customDomain string = ''
 
 @description('Minimum number of replicas (0 allows scale-to-zero).')
 param minReplicas int = 1
@@ -49,12 +49,8 @@ param minReplicas int = 1
 @description('Maximum number of replicas.')
 param maxReplicas int = 3
 
-@description('Custom domain to bind (e.g. secrets.assured-dp.com). Leave empty to skip.')
-param customDomain string = ''
-
-// Construct the rediss:// URL (double-s = SSL) for Azure Redis SSL port 6380
-var redisUrl = 'rediss://:${redisAccessKey}@${redisHostName}:6380'
-
+// PWPush runs on port 5100 in HTTP mode (Container Apps handles TLS termination)
+var pwpushPort = 5100
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
@@ -98,7 +94,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     configuration: {
       ingress: {
         external: true
-        targetPort: 5000
+        targetPort: pwpushPort
         allowInsecure: false
         transport: 'auto'
       }
@@ -110,20 +106,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
       secrets: [
         {
-          name: 'redis-url'
-          #disable-next-line use-secure-value-for-secure-inputs
-          value: redisUrl
+          name: 'secret-key-base'
+          value: secretKeyBase
         }
         {
-          name: 'flask-secret-key'
-          value: flaskSecretKey
+          name: 'pwpush-master-key'
+          value: pwpushMasterKey
         }
       ]
     }
     template: {
       containers: [
         {
-          name: 'snappass'
+          name: 'pwpush'
           image: containerImage
           resources: {
             cpu: json('0.5')
@@ -131,40 +126,48 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: [
             {
-              name: 'REDIS_URL'
-              secretRef: 'redis-url'
+              name: 'SECRET_KEY_BASE'
+              secretRef: 'secret-key-base'
             }
             {
-              name: 'SECRET_KEY'
-              secretRef: 'flask-secret-key'
+              name: 'PWPUSH_MASTER_KEY'
+              secretRef: 'pwpush-master-key'
             }
             {
-              // Container Apps handles TLS termination externally;
-              // SnapPass itself runs plain HTTP internally
-              name: 'NO_SSL'
-              value: 'true'
+              name: 'RAILS_ENV'
+              value: 'production'
+            }
+            {
+              // Container Apps handles TLS termination; tell PWPush links should use https
+              name: 'PWP__HOST_PROTOCOL'
+              value: 'https'
+            }
+            {
+              // Set the public hostname for generated links (custom domain if set, otherwise blank)
+              name: 'PWP__HOST_DOMAIN'
+              value: customDomain
             }
           ]
           probes: [
             {
               type: 'Liveness'
               httpGet: {
-                path: '/'
-                port: 5000
+                path: '/active'
+                port: pwpushPort
                 scheme: 'HTTP'
               }
-              initialDelaySeconds: 15
+              initialDelaySeconds: 30
               periodSeconds: 30
               failureThreshold: 3
             }
             {
               type: 'Readiness'
               httpGet: {
-                path: '/'
-                port: 5000
+                path: '/active'
+                port: pwpushPort
                 scheme: 'HTTP'
               }
-              initialDelaySeconds: 10
+              initialDelaySeconds: 20
               periodSeconds: 10
               failureThreshold: 3
             }
@@ -194,4 +197,3 @@ output fqdn string = containerApp.properties.configuration.ingress.fqdn
 
 @description('Log Analytics workspace resource ID.')
 output logAnalyticsId string = logAnalytics.id
-
