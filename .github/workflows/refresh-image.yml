@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Azure login
         uses: azure/login@v2
         with:
@@ -50,14 +53,14 @@ jobs:
           echo "login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
           echo "acr_name=$ACR_NAME"             >> "$GITHUB_OUTPUT"
 
-      # Import latest PWPush image from Docker Hub into ACR
-      - name: Import PWPush image into ACR
+      # Build latest PWPush image in ACR (ACR pulls from Docker Hub — no auth needed)
+      - name: Build image in ACR
         run: |
-          az acr import \
-            --name "${{ steps.acr.outputs.acr_name }}" \
-            --source "docker.io/psilocybin/pwpush:$IMAGE_TAG" \
+          az acr build \
+            --registry "${{ steps.acr.outputs.acr_name }}" \
             --image "pwpush:$IMAGE_TAG" \
-            --force
+            --file Dockerfile \
+            .
 
       - name: Update Container App
         run: |

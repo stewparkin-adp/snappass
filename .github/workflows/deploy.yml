@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'infra/**'
+      - 'Dockerfile'
       - 'deploy.sh'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
@@ -88,16 +89,16 @@ jobs:
           echo "app_url=$APP_URL"                   >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # Import the official PWPush image from Docker Hub into ACR
-      # (keeps the image in your private registry; no Dockerfile needed)
+      # Build the PWPush image in ACR from our Dockerfile
+      # (ACR's build service pulls from Docker Hub — no auth needed)
       # ------------------------------------------------------------------
-      - name: Import PWPush image into ACR
+      - name: Build image in ACR
         run: |
-          az acr import \
-            --name "${{ steps.bicep.outputs.acr_name }}" \
-            --source "docker.io/psilocybin/pwpush:latest" \
+          az acr build \
+            --registry "${{ steps.bicep.outputs.acr_name }}" \
             --image "pwpush:latest" \
-            --force
+            --file Dockerfile \
+            .
 
       # ------------------------------------------------------------------
       # Update the Container App to use the ACR-hosted image
