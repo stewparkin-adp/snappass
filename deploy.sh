@@ -45,7 +45,7 @@ error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-}"
 LOCATION="${AZURE_LOCATION:-uksouth}"
 BASE_NAME="${PWPUSH_BASE_NAME:-pwpush}"
-DOCKER_IMAGE="psilocybin/pwpush:latest"
+DOCKER_IMAGE="pglombardo/pwpush:stable"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="${SCRIPT_DIR}/infra"

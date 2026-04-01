@@ -1,1 +1,1 @@
-FROM psilocybin/pwpush:latest
+FROM pglombardo/pwpush:stable

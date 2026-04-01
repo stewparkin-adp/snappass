@@ -15,7 +15,7 @@ param pwpushMasterKey = readEnvironmentVariable('PWP_MASTER_KEY')
 // Optional overrides (uncomment to change defaults)
 // ---------------------------------------------------------------------------
 
-// param containerImage = 'psilocybin/pwpush:latest'
+// param containerImage = 'pglombardo/pwpush:stable'
 // param customDomain   = 'secrets.assured-dp.com'
 // param minReplicas    = 1
 // param maxReplicas    = 3

@@ -23,7 +23,7 @@ param environmentName string
 @description('Container App resource name.')
 param containerAppName string
 
-@description('Full image reference, e.g. psilocybin/pwpush:latest or myacr.azurecr.io/pwpush:latest.')
+@description('Full image reference, e.g. pglombardo/pwpush:stable or myacr.azurecr.io/pwpush:stable.')
 param containerImage string
 
 @description('ACR login server (e.g. myacr.azurecr.io).')

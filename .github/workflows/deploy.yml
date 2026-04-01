@@ -96,7 +96,7 @@ jobs:
         run: |
           az acr build \
             --registry "${{ steps.bicep.outputs.acr_name }}" \
-            --image "pwpush:latest" \
+            --image "pwpush:stable" \
             --file Dockerfile \
             .
 
@@ -108,7 +108,7 @@ jobs:
           az containerapp update \
             --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --image "${{ steps.bicep.outputs.acr_login_server }}/pwpush:latest" \
+            --image "${{ steps.bicep.outputs.acr_login_server }}/pwpush:stable" \
             --output none
 
       # ------------------------------------------------------------------
@@ -144,4 +144,4 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/pwpush:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.bicep.outputs.acr_login_server }}/pwpush:stable" >> "$GITHUB_STEP_SUMMARY"

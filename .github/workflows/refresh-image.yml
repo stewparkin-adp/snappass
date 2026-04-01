@@ -58,7 +58,7 @@ jobs:
         run: |
           az acr build \
             --registry "${{ steps.acr.outputs.acr_name }}" \
-            --image "pwpush:$IMAGE_TAG" \
+            --image "pwpush:stable" \
             --file Dockerfile \
             .
 
@@ -67,7 +67,7 @@ jobs:
           az containerapp update \
             --name "${PWPUSH_BASE_NAME}-app" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --image "${{ steps.acr.outputs.login_server }}/pwpush:$IMAGE_TAG" \
+            --image "${{ steps.acr.outputs.login_server }}/pwpush:stable" \
             --output none
 
       - name: Summary
