@@ -12,6 +12,18 @@ param secretKeyBase   = readEnvironmentVariable('PWP_SECRET_KEY_BASE')
 param pwpushMasterKey = readEnvironmentVariable('PWP_MASTER_KEY')
 
 // ---------------------------------------------------------------------------
+// Branding
+// ---------------------------------------------------------------------------
+
+param theme        = 'flatly'
+param brandTitle   = 'Assured Data Protection'
+param brandTagline = 'Securely share sensitive information'
+
+// Logo URLs — set to a publicly accessible image (CDN, Azure Blob, etc.)
+// param lightLogo = 'https://example.com/adp-logo.png'
+// param darkLogo  = 'https://example.com/adp-logo-dark.png'
+
+// ---------------------------------------------------------------------------
 // Optional overrides (uncomment to change defaults)
 // ---------------------------------------------------------------------------
 

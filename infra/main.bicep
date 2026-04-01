@@ -32,6 +32,21 @@ param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-hellowo
 @description('Custom domain (e.g. secrets.assured-dp.com). Used to set PWP__HOST_DOMAIN.')
 param customDomain string = ''
 
+@description('Bootswatch theme name (e.g. flatly, lux, cerulean, darkly).')
+param theme string = 'flatly'
+
+@description('Site title shown in the header.')
+param brandTitle string = 'Assured Data Protection'
+
+@description('Tagline shown below the title.')
+param brandTagline string = 'Securely share sensitive information'
+
+@description('URL to the light-mode logo. Leave empty to use default.')
+param lightLogo string = ''
+
+@description('URL to the dark-mode logo. Leave empty to use default.')
+param darkLogo string = ''
+
 @description('Minimum Container App replicas (0 = scale-to-zero).')
 param minReplicas int = 1
 
@@ -84,6 +99,11 @@ module app 'modules/containerapp.bicep' = {
     secretKeyBase: secretKeyBase
     pwpushMasterKey: pwpushMasterKey
     customDomain: customDomain
+    theme: theme
+    brandTitle: brandTitle
+    brandTagline: brandTagline
+    lightLogo: lightLogo
+    darkLogo: darkLogo
     minReplicas: minReplicas
     maxReplicas: maxReplicas
   }

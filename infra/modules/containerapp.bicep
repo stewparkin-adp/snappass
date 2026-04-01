@@ -43,6 +43,21 @@ param pwpushMasterKey string
 @description('Custom domain (e.g. secrets.assured-dp.com). Sets PWP__HOST_DOMAIN.')
 param customDomain string = ''
 
+@description('Bootswatch theme name (e.g. flatly, lux, cerulean, darkly).')
+param theme string = 'flatly'
+
+@description('Site title shown in the header.')
+param brandTitle string = 'Assured Data Protection'
+
+@description('Tagline shown below the title.')
+param brandTagline string = 'Securely share sensitive information'
+
+@description('URL to the light-mode logo. Leave empty to use default.')
+param lightLogo string = ''
+
+@description('URL to the dark-mode logo. Leave empty to use default.')
+param darkLogo string = ''
+
 @description('Minimum number of replicas (0 allows scale-to-zero).')
 param minReplicas int = 1
 
@@ -124,30 +139,46 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: [
-            {
-              name: 'SECRET_KEY_BASE'
-              secretRef: 'secret-key-base'
-            }
-            {
-              name: 'PWPUSH_MASTER_KEY'
-              secretRef: 'pwpush-master-key'
-            }
-            {
-              name: 'RAILS_ENV'
-              value: 'production'
-            }
-            {
-              // Container Apps handles TLS termination; tell PWPush links should use https
-              name: 'PWP__HOST_PROTOCOL'
-              value: 'https'
-            }
-            {
-              // Set the public hostname for generated links (custom domain if set, otherwise blank)
-              name: 'PWP__HOST_DOMAIN'
-              value: customDomain
-            }
-          ]
+          env: concat(
+            [
+              {
+                name: 'SECRET_KEY_BASE'
+                secretRef: 'secret-key-base'
+              }
+              {
+                name: 'PWPUSH_MASTER_KEY'
+                secretRef: 'pwpush-master-key'
+              }
+              {
+                name: 'RAILS_ENV'
+                value: 'production'
+              }
+              {
+                // Container Apps handles TLS termination; tell PWPush links should use https
+                name: 'PWP__HOST_PROTOCOL'
+                value: 'https'
+              }
+              {
+                // Set the public hostname for generated links (custom domain if set, otherwise blank)
+                name: 'PWP__HOST_DOMAIN'
+                value: customDomain
+              }
+              {
+                name: 'PWP__THEME'
+                value: theme
+              }
+              {
+                name: 'PWP__BRAND__TITLE'
+                value: brandTitle
+              }
+              {
+                name: 'PWP__BRAND__TAGLINE'
+                value: brandTagline
+              }
+            ],
+            empty(lightLogo) ? [] : [{ name: 'PWP__BRAND__LIGHT_LOGO', value: lightLogo }],
+            empty(darkLogo)  ? [] : [{ name: 'PWP__BRAND__DARK_LOGO',  value: darkLogo  }]
+          )
           probes: [
             {
               type: 'Liveness'
